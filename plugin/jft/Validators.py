@@ -246,14 +246,15 @@ class ValidatorLatex(ValidatorHide):
 		
 		# Insert colors and font size
 		style = self._view.get_style()
-		fontsize = style.font_desc.get_size() / pango.SCALE
+		fontsize = (style.font_desc.get_size() / pango.SCALE) * 1.5
+		
+		dpi = fontsize * 72.27 / 10
 		
 		color = gdk.color_parse(self.get_foreground_color())
-		
-		template = self.template.replace('#fontsize', '%dpt' % int(fontsize))
-		template = template.replace('#color', '%f,%f,%f' % (color.red / 65535.0,
-		                                                    color.green / 65535.0,
-		                                                    color.blue / 65535.0))
+
+		template = self.template.replace('#color', '%f,%f,%f' % (color.red / 65535.0,
+		                                                         color.green / 65535.0,
+		                                                         color.blue / 65535.0))
 
 		template = template.replace('#expression', text)
 
@@ -268,7 +269,7 @@ class ValidatorLatex(ValidatorHide):
 		d = os.path.dirname(name)
 		b = os.path.basename(name)
 		
-		cmd = 'cd "%s" && latex -halt-on-error -interaction=batchmode "%s.tex" && dvipng -o "%s.png" -T tight -bg Transparent "%s.dvi"' % (d, b, b, b)
+		cmd = 'cd "%s" && latex -halt-on-error -interaction=batchmode "%s.tex" && dvipng -o "%s.png" -T tight -D %f -bg Transparent "%s.dvi"' % (d, b, b, dpi, b)
 		
 		null = file('/dev/null')
 		
