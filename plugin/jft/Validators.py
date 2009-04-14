@@ -164,7 +164,7 @@ class ValidatorLatex(ValidatorHide):
 			
 			del self._running_procs[bounds]
 			
-			if len(self._running_proces) == 0:
+			if len(self._running_procs) == 0:
 				glib.source_remove(self._timeout_id)
 				self._timeout_id = 0
 	
@@ -231,8 +231,8 @@ class ValidatorLatex(ValidatorHide):
 			if ret != None:
 				self._process_done(bounds, info[0], ret)
 			
-			del self._running_procs[bounds]
-		
+				del self._running_procs[bounds]
+
 		if len(self._running_procs) == 0:
 			self._timeout_id = 0
 			return False
