@@ -14,9 +14,9 @@
   <color name="green" value="#00c900"/>
   <color name="alga" value="#00c99b"/>
   <color name="aqua" value="#00d8ff"/>
-  <color name="cyan" value="#009cff"/>
+  <color name="cyan" value="#5cc0ff"/>
   <color name="violet" value="#9e91ff"/>
-  <color name="purple" value="#bb66ff"/>
+  <color name="purple" value="#c36fff"/>
   <color name="fuchsia" value="#ff44cc"/>
   <color name="magenta" value="#ff79d9"/>
   <color name="red" value="#ff2f6a"/>
@@ -72,6 +72,7 @@
 <!--
         Language specific styles 
 -->
+  <style name="jft:header" foreground="yellow" italic="true"/>
   <style name="jft:tag-done" foreground="green" bold="true"/>
   <style name="jft:tag-done-value" foreground="lime" strikethrough="true"/>
   <style name="jft:tag-todo" foreground="orange" bold="true"/>
@@ -82,6 +83,7 @@
   <style name="jft:tag-deadline-value" foreground="orange" bold="true"/>
   <style name="jft:datetime" foreground="violet" italic="true"/>
   <style name="jft:appointment" foreground="yellow" underline="true"/>
+  <style name="jft:author" italic="true"/>
   
   <style name="jft:meta-boundary" foreground="ambra"/>
   <style name="jft:meta-contents" foreground="senape" italic="true"/>

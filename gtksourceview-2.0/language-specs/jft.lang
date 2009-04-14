@@ -22,13 +22,14 @@
 -->
 <language id="jft" _name="JFT" version="2.0" _section="Markup">
   <metadata>
-    <property name="mimetypes">text/x-jftx</property>
+    <property name="mimetypes">text/x-jft</property>
     <property name="globs">*.jft</property>
     <property name="line-comment-start">#</property>
   </metadata>
 
   <styles>
     <style id="comment"                 _name="Comment"    map-to="def:comment"/>
+    <style id="header"                  _name="Header"/>
     <style id="tag-done"                _name="Tag done"/>
     <style id="tag-deadline"            _name="Tag deadline"/>
     <style id="tag-todo"                _name="Tag todo"/>
@@ -43,6 +44,7 @@
     <style id="meta-contents"           _name="Meta contents"/>
     <style id="meta-label"              _name="Meta label"/>
     <style id="latex-math"              _name="Latex math"/>
+    <style id="author"                  _name="Author"/>
   </styles>
 
   <definitions>
@@ -85,6 +87,12 @@
       <end>$</end>
       <include>
         <context ref="def:in-comment"/>
+        <context ref="embedded-stuff"/>
+      </include>
+    </context>
+    <context id="header" style-ref="header" end-at-line-end="true">
+      <start>%</start>
+      <include>
         <context ref="embedded-stuff"/>
       </include>
     </context>
@@ -145,7 +153,9 @@
       <include>
         <context ref="embedded-stuff"/>
         <context ref="meta"/>
+        <context ref="header"/>
         <context ref="comment"/>
+
         <context ref="tags"/>
       </include>
     </context>
