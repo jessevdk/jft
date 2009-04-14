@@ -1,0 +1,9 @@
+[Gedit Plugin]
+Loader=python
+Module=jft
+IAge=2
+Name=JFT functions
+Description=JFT functions
+Authors=Jesse van den Kieboom <jesse@icecrew.nl>
+Copyright=Copyright © 2009 Jesse van den Kieboom <jesse@icecrew.nl>
+Website=http://www.gedit.org

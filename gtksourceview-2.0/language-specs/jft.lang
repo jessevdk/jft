@@ -1,0 +1,154 @@
+<?xml version="1.0"?>
+<!--
+
+ Author: Jesse van den Kieboom  <jesse@cecrew.nl>
+ Copyright (C) 2008  Jesse van den Kieboom  <jesse@cecrew.nl>
+
+ This library is free software; you can redistribute it and/or
+ modify it under the terms of the GNU Library General Public
+ License as published by the Free Software Foundation; either
+ version 2 of the License, or (at your option) any later version.
+
+ This library is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ Library General Public License for more details.
+
+ You should have received a copy of the GNU Library General Public
+ License along with this library; if not, write to the
+ Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+ Boston, MA 02111-1307, USA.
+
+-->
+<language id="jft" _name="JFT" version="2.0" _section="Markup">
+  <metadata>
+    <property name="mimetypes">text/x-jftx</property>
+    <property name="globs">*.jft</property>
+    <property name="line-comment-start">#</property>
+  </metadata>
+
+  <styles>
+    <style id="comment"                 _name="Comment"    map-to="def:comment"/>
+    <style id="tag-done"                _name="Tag done"/>
+    <style id="tag-deadline"            _name="Tag deadline"/>
+    <style id="tag-todo"                _name="Tag todo"/>
+    <style id="tag-check"               _name="Tag check"/>
+    <style id="tag-done-value"          _name="Tag done value"/>
+    <style id="tag-todo-value"          _name="Tag todo value"/>
+    <style id="tag-check-value"         _name="Tag check value"/>
+    <style id="tag-deadline-value"      _name="Tag deadline value"/>
+    <style id="datetime"                _name="Date time"/>
+    <style id="appointment"             _name="Appointment"/>
+    <style id="meta-boundary"           _name="Meta boundary"/>
+    <style id="meta-contents"           _name="Meta contents"/>
+    <style id="meta-label"              _name="Meta label"/>
+    <style id="latex-math"              _name="Latex math"/>
+  </styles>
+
+  <definitions>
+    <define-regex id="full-month" extended="true">
+      \b(:?January|February|March|April|May|June|July|Agust|September|October|November|December)\b
+    </define-regex>
+    <define-regex id="month" extended="true">
+      \b(:?Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b|
+      \%{full-month}
+    </define-regex>
+    <define-regex id="time" extended="true">
+      [0-9]{1,2}:[0-9]{1,2}(?::[0-9]{1,2})?
+    </define-regex>
+    <define-regex id="date" extended="true">
+      [0-9]{1,2}-[0-9]{1,2}(?:-[0-9]{2,})? |
+      [0-9]{1,2}\s*\%{month}
+    </define-regex>
+    <define-regex id="datetime" extended="true">
+      (?:\%{date}(?:\s*,\s*\%{time})?|\%{full-month})
+    </define-regex>
+
+    <context id="in-meta" extend-parent="false">
+      <match>([^#]*)\s*:\s*([^:]*[^\s][^:]*?)</match>
+      <include>
+        <context sub-pattern="1" style-ref="meta-contents"/>
+        <context sub-pattern="2" style-ref="meta-label"/>
+      </include>
+    </context>
+    <context id="meta" end-at-line-end="true">
+      <start>##\s*</start>
+      <end>\s*##</end>
+      <include>
+        <context ref="in-meta"/>
+        <context sub-pattern="0" where="start" style-ref="meta-boundary"/>
+        <context sub-pattern="0" where="end" style-ref="meta-boundary"/>
+      </include>
+    </context>
+    <context id="comment" style-ref="comment">
+      <start>#</start>
+      <end>$</end>
+      <include>
+        <context ref="def:in-comment"/>
+        <context ref="embedded-stuff"/>
+      </include>
+    </context>
+    <context id="tag-done" end-at-line-end="true" style-inside="true" style-ref="tag-done-value">
+      <start>(DONE):\s*(\((\%{datetime})\))?\s*</start>
+		  <include>
+      	<context sub-pattern="1" style-ref="tag-done" where="start"/>
+      	<context sub-pattern="3" style-ref="datetime" where="start"/>
+      	<context ref="embedded-stuff"/>
+      </include>
+    </context>
+    <context id="tag-todo" end-at-line-end="true" style-inside="true" style-ref="tag-todo-value">
+      <start>(TODO):\s*(\((\%{datetime})\))?\s*</start>
+		  <include>
+      	<context sub-pattern="1" style-ref="tag-todo" where="start"/>
+      	<context sub-pattern="3" style-ref="datetime" where="start"/>
+      	<context ref="embedded-stuff"/>
+      </include>
+    </context>
+    <context id="tag-check" end-at-line-end="true" style-inside="true" style-ref="tag-check-value">
+      <start>(CHECK):\s*(\((\%{datetime})\))?\s*</start>
+		  <include>
+      	<context sub-pattern="1" style-ref="tag-check" where="start"/>
+      	<context sub-pattern="3" style-ref="datetime" where="start"/>
+      	<context ref="embedded-stuff"/>
+      </include>
+    </context>
+    <context id="tag-deadline" end-at-line-end="true" style-inside="true" style-ref="tag-deadline-value">
+      <start>(DEADLINE):\s*(\((\%{datetime})\))?\s*</start>
+		  <include>
+      	<context sub-pattern="1" style-ref="tag-deadline" where="start"/>
+      	<context sub-pattern="3" style-ref="datetime" where="start"/>
+      	<context ref="embedded-stuff"/>
+      </include>
+    </context>
+	  <context id="tags">
+		  <include>
+      	<context ref="tag-done"/>
+      	<context ref="tag-todo"/>
+      	<context ref="tag-check"/>
+      	<context ref="tag-deadline"/>
+      </include>
+	  </context>
+	  <context id="latex-math" style-ref="latex-math">
+	    <start>\$</start>
+	    <end>\$</end>
+	  </context>
+	  <context id="datetime" style-ref="datetime">
+	    <match>\%{datetime}</match>
+	  </context>
+	  <context id="embedded-stuff">
+	    <include>
+        <context ref="datetime"/>
+        <context ref="latex-math"/>
+	    </include>
+	  </context>
+    <context id="jft">
+      <include>
+        <context ref="embedded-stuff"/>
+        <context ref="meta"/>
+        <context ref="comment"/>
+        <context ref="tags"/>
+      </include>
+    </context>
+  </definitions>
+</language>
+<!-- vi:ts=2:et -->
