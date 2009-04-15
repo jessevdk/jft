@@ -268,8 +268,16 @@ class Validation(Signals):
 	def on_cursor_moved(self, doc):
 		glib.idle_add(self.cursor_moved_real)
 	
+	def _store_for_save(self):
+		for item in self._sorted_marks:
+			item.validator.store_for_save(item.bounds)
+	
+	def _restore_after_save(self):
+		for item in self._sorted_marks:
+			item.validator.restore_after_save(item.bounds)
+	
 	def on_save(self, doc, uri, encoding, flags):
-		self._invalidate_all()
+		self._store_for_save()
 	
 	def on_saved(self, doc, arg1):
-		self._invalidate(*self._buffer.get_bounds())
+		self._restore_after_save()

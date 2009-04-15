@@ -82,6 +82,18 @@ class Validator:
 	
 	def exit(self, bounds):
 		pass
+	
+	def store_for_save(self, bounds):
+		pass
+
+	def restore_after_save(self, bounds):
+		pass
+	
+	def mouse_enter(self, bounds):
+		pass
+	
+	def mouse_exit(self, bounds):
+		pass
 
 class ValidatorHide(Validator):
 	def __init__(self, view, rule, visible_parts):
@@ -184,7 +196,7 @@ class ValidatorLatex(ValidatorHide):
 
 			del bounds.data['anchor']
 	
-	def _show_pixbuf(self, bounds):
+	def _show_pixbuf(self, bounds, image = None):
 		# Make text invisible
 		self._buffer.apply_tag(self._tag_invisible, bounds.start_iter(), bounds.end_iter())
 		
@@ -246,7 +258,7 @@ class ValidatorLatex(ValidatorHide):
 		
 		# Insert colors and font size
 		style = self._view.get_style()
-		fontsize = (style.font_desc.get_size() / pango.SCALE) * 1.5
+		fontsize = (style.font_desc.get_size() / pango.SCALE) * 1.8
 		
 		dpi = fontsize * 72.27 / 10
 		
@@ -296,3 +308,13 @@ class ValidatorLatex(ValidatorHide):
 		
 		# Hide pixbuf
 		self._remove_pixbuf(bounds)
+	
+	def store_for_save(self, bounds):
+		if 'anchor' in bounds.data:
+			self._remove_pixbuf(bounds)
+			bounds.data['restore_image'] = True
+
+	def restore_after_save(self, bounds):
+		if 'restore_image' in bounds.data:
+			self._show_pixbuf(bounds)
+			del bounds.data['restore_image']
