@@ -232,6 +232,8 @@ class DocumentHelper(Signals):
 				self._buffer.begin_user_action()
 				self._buffer.insert(piter, "\n%s " % (match.group(0),))
 				self._buffer.end_user_action()
+				
+				self._view.scroll_mark_onscreen(self._buffer.get_insert())
 				return True
 		
 		return False
@@ -269,6 +271,7 @@ class DocumentHelper(Signals):
 
 		self._buffer.insert(start, "\n%s%s " % (idn * num, bullet * num))
 		self._buffer.end_user_action()
+		self._view.scroll_mark_onscreen(self._buffer.get_insert())
 
 		return True
 
