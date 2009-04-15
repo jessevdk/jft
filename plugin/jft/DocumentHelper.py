@@ -28,6 +28,7 @@ class DocumentHelper(Signals):
 		
 		self._re_any_tag = re.compile('^\s*(\**)(\s*)((DONE|CHECK|TODO|DEADLINE):\s*(\([0-9]{1,2}((\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*)|-[0-9]{1,2}(-[0-9]{2,})?|(January|February|April|May|June|July|August|September|October|November|December))\))?\s* ?)?')
 		self._re_list = re.compile('^(\s*)(\*+)')
+		self._re_continuations = re.compile('^(\s*)((#+|%+)\s*)')
 
 	def reset_buffer(self, newbuf):
 		self._in_mode = False
@@ -57,7 +58,8 @@ class DocumentHelper(Signals):
 			else:
 				self._buffer = None
 
-	def initialize_event_handlers(self):
+	def initialize_event_handlers(self):	
+
 		self._event_handlers = [
 			[('j',), gdk.CONTROL_MASK, self.do_switch_mode, False],
 			[('d',), gdk.CONTROL_MASK, self.do_tag_done, True],
@@ -226,6 +228,10 @@ class DocumentHelper(Signals):
 		
 		while start.backward_line():
 			line = self._buffer.line_at_iter(start)
+			
+			if line.strip() == '' or (not line.startswith(' ') and not line.startswith('\t')):
+				return False
+			
 			match = self._re_list.match(line)
 			
 			if match:
@@ -242,6 +248,16 @@ class DocumentHelper(Signals):
 		# Insert new line and auto indent
 		start = self._buffer.insert_iter()
 		line = self._buffer.line_at_iter(start)
+		
+		if not event.state & gdk.CONTROL_MASK:
+			match = self._re_continuations.match(line)
+		
+			if match:
+				self._buffer.begin_user_action()
+				self._buffer.insert(start, "\n%s%s" % (match.group(1), match.group(2)))
+				self._buffer.end_user_action()
+				self._view.scroll_mark_onscreen(self._buffer.get_insert())
+				return True
 		
 		match = self._re_list.match(line)
 		
