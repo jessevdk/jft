@@ -219,9 +219,18 @@ class Validation(Signals):
 		self._insert_text_start = buf.create_mark(None, location, True)
 	
 	def on_insert_text_after(self, buf, location, text, length):
-		self._invalidate(buf.get_iter_at_mark(self._insert_text_start), location)
+		start = buf.get_iter_at_mark(self._insert_text_start)
+		self._invalidate(start, location)
 		buf.delete_mark(self._insert_text_start)
 		self._insert_text_start = None
+		
+		diff = location.get_line() - start.get_line()
+		
+		if diff > 0:
+			idx = bisect.bisect_right(self._sorted_marks, start.get_line() + 1)
+			
+			for i in range(idx, len(self._sorted_marks)):
+				self._sorted_marks[i].line += diff
 	
 	def on_delete_range(self, buf, start, end):
 		self._delete_range = [start.get_line(), end.get_line()]
