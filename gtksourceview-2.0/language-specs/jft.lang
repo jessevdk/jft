@@ -91,7 +91,7 @@
       </include>
     </context>
     <context id="header" style-ref="header" end-at-line-end="true">
-      <start>%</start>
+      <start>^\s*%</start>
       <include>
         <context ref="embedded-stuff"/>
       </include>
