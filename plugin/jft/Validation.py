@@ -145,10 +145,11 @@ class Validation(Signals):
 		if self._has_validator_at_iter(validator, iters[0]) and \
 		   self._has_validator_at_iter(validator, iters[1]):
 			return
-		
+
 		bounds = Validation.Bounds(*self._buffer.create_mark_range(iters[0], iters[1]))
 		
-		bisect.insort(self._sorted_marks, Validation.SortedMark(iters[0].get_line(), validator, bounds))
+		item = Validation.SortedMark(iters[0].get_line(), validator, bounds)
+		bisect.insort(self._sorted_marks, item)
 		
 		validator.add(bounds)
 		validator.validate(bounds, match)
@@ -157,6 +158,7 @@ class Validation(Signals):
 		start, end = bounds.start_iter(), bounds.end_iter()
 		
 		if piter.in_range(start, end):
+			self._active_items.append(item)
 			validator.enter(bounds)
 
 	def _is_active(self, mark, line):
@@ -188,7 +190,7 @@ class Validation(Signals):
 				if not a.valid():
 					if a in self._active_items:
 						self._active_items.remove(a)
-					
+
 					a.stop()
 					self._sorted_marks.remove(a)
 		
@@ -201,7 +203,7 @@ class Validation(Signals):
 				for match in validator.match(line):
 					self._add_validate(validator, start, match)
 		
-		self.invalid_lines = []
+		self._invalid_lines = []
 		return False
 	
 	def _invalidate(self, start, end):
