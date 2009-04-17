@@ -63,7 +63,7 @@ class BufferUtils:
 	def on_insert_text(self, buf, location, text, length):
 		self._insert_text_start = buf.create_mark(None, location, True)
 	
-	def on_insert_text_after(self, buf, location, text, length)
+	def on_insert_text_after(self, buf, location, text, length):
 		handlers = self.buffer.get_data('BufferUtilsInsertTextHandler')
 
 		piter = self.get_iter_at_mark(self._insert_text_start)
