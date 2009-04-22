@@ -6,5 +6,6 @@
     <!-- more translated comment elements -->
     <glob pattern="*.jft"/>
     <sub-class-of type="text/plain"/>
+    <generic-icon name="document"/>
   </mime-type>
 </mime-info>
