@@ -27,7 +27,7 @@ class DocumentHelper(Signals):
 		self.initialize_event_handlers()
 		
 		self._re_any_tag = re.compile('^\s*(\**)(\s*)((DONE|CHECK|TODO|DEADLINE):\s*(\([0-9]{1,2}((\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*)|-[0-9]{1,2}(-[0-9]{2,})?|(January|February|April|May|June|July|August|September|October|November|December))\))?\s* ?)?')
-		self._re_list = re.compile('^(\s*)(\*+)')
+		self._re_list = re.compile('^(\s*)(\*+)(\s*)')
 		self._re_continuations = re.compile('^(\s*)((#+|%+)\s*)')
 
 	def reset_buffer(self, newbuf):
@@ -50,11 +50,13 @@ class DocumentHelper(Signals):
 		if not self._buffer or self._buffer.buffer != newbuf:
 			if self._buffer:
 				self.disconnect_signals(self._buffer.buffer)
+				self._buffer.disconnect_insert_text(self.on_insert_text)
 				self.validation = None
 			
 			if newbuf:
 				self._buffer = BufferUtils(newbuf)
 				self.connect_signal(newbuf, 'notify::language', self.on_notify_language)
+				self._buffer.connect_insert_text(self.on_insert_text)
 			else:
 				self._buffer = None
 
@@ -156,69 +158,97 @@ class DocumentHelper(Signals):
 		self._buffer.delete(start, end)
 		self._buffer.insert(start, indent * num + '*' * num)
 	
-	def do_indent(self, direct):
-		# See if the current line is a list
-		bd = self._buffer.get_selection_bounds()
+	def reindent_block(self, start, end):
+		"""reindent_block(start, end) -> [start, end, [reindents]]
 		
-		if len(bd) == 0:
-			start = end = self._buffer.insert_iter()
-		else:
-			start, end = bd
-
+		Reindents a text block using list rules. The block is determined by
+		text iters start and end. The new positions of start and end after 
+		reindenting are returned.
+		"""
+		
 		offsets = range(start.get_line(), end.get_line() + 1)
 		
-		if not start.equal(end):
-			bounds = (self._buffer.create_mark(None, start, True),
-					  self._buffer.create_mark(None, end, False))
-		else:
-			bounds = None
+		# Create marks to keep track of the iters so we can return their new
+		# positions
+		marks = self._buffer.create_mark_range(start, end, True)
+		reindents = []
 		
-		ret = False
-		reindent = False
-		indent_info = []
-		
+		self._buffer.begin_user_action()
+
 		for i in offsets:
 			line = self._buffer.line_at_offset(i)
 
-			m = self._re_list.match(line)
+			match = self._re_list.match(line)
 		
-			if not m:
+			if not match:
 				continue
 			
-			ret = True
-		
-			# See if current indent conforms to bullets
-			idn, num = self.guess_indent(m.group(1))
+			# See if the indentation is correct
+			idn, num = self.guess_indent(match.group(1))
 			
-			indent_info.append((idn, num, m))
-			
-			if m.group(1) != idn * num or num != len(m.group(2)):
-				reindent = True
+			if match.group(1) != idn * num or num != len(match.group(2)):
+				# Incorrect indentation, reindent
+				start = self._buffer.get_iter_at_line(i)
+				end = start.copy()
+				end.forward_chars(match.end(2))
 
-		if not ret:
-			return False
+				self.reindent_list(start, end, idn, len(match.group(2)))
+				reindents.append(i)
 		
+		self._buffer.end_user_action()
+		ret = self._buffer.delete_mark_range(marks)
+		ret.append(reindents)
+		
+		return ret
+	
+	def indent_next_level(self, direct):
+		bd = self._buffer.get_selection_bounds()
+
 		self._buffer.begin_user_action()
 		
-		for i in range(0, len(offsets)):
-			start = self._buffer.get_iter_at_line(offsets[i])
-			info = indent_info[i]
-			idn, num, match = info
+		if not bd or bd[0].equal(bd[1]):
+			piter = self._buffer.insert_iter()
+			start, end, reindented = self.reindent_block(piter, piter.copy())
+			bounds = None
+		else:
+			start, end, reindented = self.reindent_block(*bd)
+			bounds = self._buffer.create_mark_range(start, end, True)
 
-			end = start.copy()
-			end.forward_chars(match.end(2))
+		offsets = range(start.get_line(), end.get_line() + 1)
+		ret = False
 
-			if reindent:
-				self.reindent_list(start, end, idn, len(match.group(2)))
-			else:
-				self.reindent_list(start, end, idn, num + direct)
+		if not reindented:
+			for i in offsets:
+				line = self._buffer.line_at_offset(i)
+
+				match = self._re_list.match(line)
+
+				if not match:
+					continue
+			
+				ret = True
 		
+				# See if current indent conforms to bullets
+				idn, num = self.guess_indent(match.group(1))
+				start = self._buffer.get_iter_at_line(i)
+				end = start.copy()
+				end.forward_chars(match.end(2))
+			
+				self.reindent_list(start, end, idn, num + direct)
+		else:
+			ret = True
+
+		if not ret:
+			self._buffer.end_user_action()
+			return False
+
 		if bounds:
+			# Reinstate the selection bounds
 			self._buffer.move_mark_to_mark(self._buffer.get_insert(), bounds[0])
 			self._buffer.move_mark_to_mark(self._buffer.get_selection_bound(), bounds[1])
-			self._buffer.delete_mark(bounds[0])
-			self._buffer.delete_mark(bounds[1])
-		
+			
+			self._buffer.delete_mark_range(bounds)
+
 		self._buffer.end_user_action()
 		return True
 
@@ -247,7 +277,10 @@ class DocumentHelper(Signals):
 	def auto_indent(self, event):
 		# Insert new line and auto indent
 		start = self._buffer.insert_iter()
-		line = self._buffer.line_at_iter(start)
+		begin = start.copy()
+		begin.set_line_offset(0)
+
+		line = begin.get_text(start)
 		
 		if not event.state & gdk.CONTROL_MASK:
 			match = self._re_continuations.match(line)
@@ -269,22 +302,14 @@ class DocumentHelper(Signals):
 		
 		# Do special auto indentation, inserting list stuff
 		idn, num = self.guess_indent(match.group(1))
+		num = len(match.group(2))
 
-		self._buffer.begin_user_action()
-		
-		if match.group(1) != idn * num or num != len(match.group(2)):
-			# First reindent this one then
-			end = start.copy()
-			end.forward_chars(match.end(2))
-
-			num = len(match.group(2))
-			self.reindent_list(start, end, idn, num)
-		
 		if event.state & gdk.CONTROL_MASK:
 			bullet = ' '
 		else:
 			bullet = '*'
 
+		self._buffer.begin_user_action()
 		self._buffer.insert(start, "\n%s%s " % (idn * num, bullet * num))
 		self._buffer.end_user_action()
 		self._view.scroll_mark_onscreen(self._buffer.get_insert())
@@ -307,10 +332,10 @@ class DocumentHelper(Signals):
 		return self.exit_mode()
 	
 	def do_indent_add(self, event):
-		return self.do_indent(1)
+		return self.indent_next_level(1)
 	
 	def do_indent_remove(self, event):
-		return self.do_indent(-1)
+		return self.indent_next_level(-1)
 	
 	def do_auto_indent(self, event):
 		return self.auto_indent(event)
@@ -329,3 +354,111 @@ class DocumentHelper(Signals):
 	
 	def on_notify_buffer(self, view, spec):
 		self.reset_buffer(view.get_buffer())
+	
+	def _break_for_wrap(self, line, border):
+		tabsize = self._view.get_tab_width()
+		inmath = False
+
+		for i in range(len(line) - 1, 1, -1):
+			first = line[0:i]
+			if line[i] == '$':
+				inmath = not inmath
+			
+			if not inmath and line[i].isspace() and (len(first) + first.count("\t") * (tabsize - 1)) < border:
+				second = line[i + 1:]
+				
+				if len(second) > border - 1:
+					return None, None
+
+				return first, second
+
+		return None, None
+	
+	def _wrap_reuse_next(self, offset):
+		start = self._buffer.get_iter_at_line(offset + 1)
+		
+		if start.get_line() == offset:
+			return False
+		
+		end = start.copy()
+		end.forward_to_line_end()
+		
+		line = start.get_text(end)
+		
+		return not (self._re_list.match(line) or line.strip() == "")
+	
+	def on_insert_text(self, start, end):
+		self._buffer.block_insert_text(self.on_insert_text)
+		
+		sl = start.get_line()
+		el = end.get_line()
+		
+		# First reindent block if there is more than 1 line of text
+		if sl != el:
+			start, end, reindented = self.reindent_block(start, end)
+
+		tabsize = self._view.get_tab_width()
+		border = self._view.get_right_margin_position()
+
+		while sl <= el:
+			# See if the line needs any wrapping
+			line = self._buffer.line_at_offset(sl)
+			
+			tabs = line.count("\t")
+
+			# Line extends margin?
+			if len(line) + tabs * (tabsize - 1) > border - 1:
+				# Do the wrapping magic
+				orig, wrapped = self._break_for_wrap(line, border)
+				
+				if wrapped:
+					start = self._buffer.get_iter_at_line(sl)
+					start.forward_chars(len(orig))
+					end = start.copy()
+					end.forward_to_line_end()
+				
+					self._buffer.delete(start, end)
+				
+					if self._wrap_reuse_next(sl):
+						# Prepend wrapped text to next line
+						ins = self._buffer.get_iter_at_mark(self._buffer.get_insert())
+						movecursor = ins.equal(end)
+						
+						start = self._buffer.get_iter_at_line(sl + 1)
+						self._buffer.iter_skip_space(start)
+						self._buffer.insert(start, wrapped)
+					
+						if not wrapped[-1].isspace():
+							self._buffer.insert(start, " ")
+							start.backward_char()
+						
+						if movecursor:
+							self._buffer.move_mark(self._buffer.get_insert(), start)
+							self._buffer.move_mark(self._buffer.get_selection_bound(), start)
+						
+						if el == sl:
+							el += 1
+					else:
+						# Create a new line, but calculate the indentation
+						match = self._re_list.match(line)
+						
+						if match:
+							idn, num = self.guess_indent(match.group(1))
+							num = len(match.group(2))
+							
+							indent = "%s%s%s" % (idn * num, ' ' * num, match.group(3))
+						else:
+							start = self._buffer.get_iter_at_line(sl)
+							begin = start.copy()
+							self._buffer.iter_skip_space(start)
+							
+							indent = begin.get_text(start)
+						
+						self._buffer.insert(end, "\n%s%s" % (indent, wrapped))
+				
+						el += 1
+			
+			sl += 1
+				
+		self._buffer.unblock_insert_text(self.on_insert_text)
+

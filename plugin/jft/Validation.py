@@ -78,12 +78,12 @@ class Validation(Signals):
 		self._buffer = BufferUtils(buf)
 		
 		self.connect_signal(buf, 'delete-range', self.on_delete_range)
-		self.connect_signal(buf, 'insert-text', self.on_insert_text)
-		self.connect_signal_after(buf, 'insert-text', self.on_insert_text_after)
 		self.connect_signal_after(buf, 'delete-range', self.on_delete_range_after)
 		self.connect_signal(buf, 'cursor-moved', self.on_cursor_moved)
 		self.connect_signal(buf, 'save', self.on_save)
 		self.connect_signal(buf, 'saved', self.on_saved)
+		
+		self._buffer.connect_insert_text(self.on_insert_text)
 		
 		self._invalid_lines = []
 		self._invalid_idle_id = 0
@@ -109,6 +109,8 @@ class Validation(Signals):
 			self._invalid_idle_id = 0
 		
 		self.disconnect_signals(self._buffer.buffer)
+		self._buffer.disconnect_insert_text(self.on_insert_text)
+
 		self._invalidate_all()
 	
 	def _initialize_validators(self):
@@ -215,13 +217,8 @@ class Validation(Signals):
 		if self._invalid_idle_id == 0:
 			self._invalid_idle_id = glib.idle_add(self._revalidate_idle)
 
-	def on_insert_text(self, buf, location, text, length):
-		self._insert_text_start = buf.create_mark(None, location, True)
-	
-	def on_insert_text_after(self, buf, location, text, length):
-		start = buf.get_iter_at_mark(self._insert_text_start)
+	def on_insert_text(self, start, location):
 		self._invalidate(start, location)
-		buf.delete_mark(self._insert_text_start)
 		self._insert_text_start = None
 		
 		diff = location.get_line() - start.get_line()
