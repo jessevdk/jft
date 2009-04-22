@@ -40,14 +40,17 @@ class DocumentHelper(Signals):
 
 		if newbuf == None or lang == None or lang.get_id() != 'jft':
 			self.disconnect_signal(self._view, 'key-press-event')
-			self._buffer.disconnect_insert_text(self.on_insert_text)
+			
+			if self._buffer:
+				self._buffer.disconnect_insert_text(self.on_insert_text)
 
 			if self.validation:
 				self.validation.stop()
 		else:
 			self.connect_signal(self._view, 'key-press-event', self.on_key_press_event)
-			self._buffer.connect_insert_text(self.on_insert_text)
 			self.validation = Validation(self._view)
+			self.connect_signal(newbuf, 'load', self.on_document_load)
+			self.connect_signal(newbuf, 'load', self.on_document_loaded)
 		
 		if not self._buffer or self._buffer.buffer != newbuf:
 			if self._buffer:
@@ -60,6 +63,10 @@ class DocumentHelper(Signals):
 				self.connect_signal(newbuf, 'notify::language', self.on_notify_language)
 			else:
 				self._buffer = None
+		
+		if self._buffer and self._buffer.get_language() and \
+		   self._buffer.get_language().get_id() == 'jft':
+			self._buffer.connect_insert_text(self.on_insert_text)
 
 	def initialize_event_handlers(self):	
 
@@ -267,7 +274,7 @@ class DocumentHelper(Signals):
 			
 			if match:
 				self._buffer.begin_user_action()
-				self._buffer.insert(piter, "\n%s " % (match.group(0),))
+				self._buffer.insert(piter, "\n%s" % (match.group(0),))
 				self._buffer.end_user_action()
 				
 				self._view.scroll_mark_onscreen(self._buffer.get_insert())
@@ -311,7 +318,7 @@ class DocumentHelper(Signals):
 			bullet = '*'
 
 		self._buffer.begin_user_action()
-		self._buffer.insert(start, "\n%s%s " % (idn * num, bullet * num))
+		self._buffer.insert(start, "\n%s%s%s" % (idn * num, bullet * num, match.group(3)))
 		self._buffer.end_user_action()
 		self._view.scroll_mark_onscreen(self._buffer.get_insert())
 
@@ -417,13 +424,15 @@ class DocumentHelper(Signals):
 					start.forward_chars(len(orig))
 					end = start.copy()
 					end.forward_to_line_end()
-				
+
+					ins = self._buffer.get_iter_at_mark(self._buffer.get_insert())
+					movecursor = ins.in_range(start, end) or ins.equal(end)
+					moveinit = end.get_line_offset() - ins.get_line_offset()
+					
 					self._buffer.delete(start, end)
 				
 					if self._wrap_reuse_next(sl):
 						# Prepend wrapped text to next line
-						ins = self._buffer.get_iter_at_mark(self._buffer.get_insert())
-						movecursor = ins.equal(end)
 						
 						start = self._buffer.get_iter_at_line(sl + 1)
 						self._buffer.iter_skip_space(start)
@@ -433,6 +442,8 @@ class DocumentHelper(Signals):
 							self._buffer.insert(start, " ")
 							start.backward_char()
 						
+						start.backward_chars(moveinit)
+
 						if movecursor:
 							self._buffer.move_mark(self._buffer.get_insert(), start)
 							self._buffer.move_mark(self._buffer.get_selection_bound(), start)
@@ -456,6 +467,12 @@ class DocumentHelper(Signals):
 							indent = begin.get_text(start)
 						
 						self._buffer.insert(end, "\n%s%s" % (indent, wrapped))
+						
+						end.backward_chars(moveinit)
+
+						if movecursor:
+							self._buffer.move_mark(self._buffer.get_insert(), end)
+							self._buffer.move_mark(self._buffer.get_selection_bound(), end)
 				
 						el += 1
 			
@@ -463,3 +480,8 @@ class DocumentHelper(Signals):
 				
 		self._buffer.unblock_insert_text(self.on_insert_text)
 
+	def on_document_load(self, doc, uri, linepos, create):
+		self._buffer.block_insert_text(self.on_insert_text)
+	
+	def on_document_loaded(self, doc, arg1):
+		self._buffer.unblock_insert_text(self.on_insert_text)
