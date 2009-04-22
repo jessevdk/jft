@@ -40,23 +40,24 @@ class DocumentHelper(Signals):
 
 		if newbuf == None or lang == None or lang.get_id() != 'jft':
 			self.disconnect_signal(self._view, 'key-press-event')
-			
+			self._buffer.disconnect_insert_text(self.on_insert_text)
+
 			if self.validation:
 				self.validation.stop()
 		else:
 			self.connect_signal(self._view, 'key-press-event', self.on_key_press_event)
+			self._buffer.connect_insert_text(self.on_insert_text)
 			self.validation = Validation(self._view)
 		
 		if not self._buffer or self._buffer.buffer != newbuf:
 			if self._buffer:
 				self.disconnect_signals(self._buffer.buffer)
-				self._buffer.disconnect_insert_text(self.on_insert_text)
+				
 				self.validation = None
 			
 			if newbuf:
 				self._buffer = BufferUtils(newbuf)
 				self.connect_signal(newbuf, 'notify::language', self.on_notify_language)
-				self._buffer.connect_insert_text(self.on_insert_text)
 			else:
 				self._buffer = None
 
