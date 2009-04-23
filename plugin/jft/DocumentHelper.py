@@ -5,10 +5,14 @@ from gtk import gdk
 import glib
 import re
 import time
+import os
 
 from Signals import Signals
 from BufferUtils import BufferUtils
 from Validation import Validation
+from ExportLatex import ExportLatex
+from ExportHtml import ExportHtml
+
 import Constants
 
 class DocumentHelper(Signals):
@@ -50,7 +54,7 @@ class DocumentHelper(Signals):
 			self.connect_signal(self._view, 'key-press-event', self.on_key_press_event)
 			self.validation = Validation(self._view)
 			self.connect_signal(newbuf, 'load', self.on_document_load)
-			self.connect_signal(newbuf, 'load', self.on_document_loaded)
+			self.connect_signal(newbuf, 'loaded', self.on_document_loaded)
 		
 		if not self._buffer or self._buffer.buffer != newbuf:
 			if self._buffer:
@@ -72,15 +76,17 @@ class DocumentHelper(Signals):
 
 		self._event_handlers = [
 			[('j',), gdk.CONTROL_MASK, self.do_switch_mode, False],
-			[('d',), gdk.CONTROL_MASK, self.do_tag_done, True],
-			[('t',), gdk.CONTROL_MASK, self.do_tag_todo, True],
-			[('c',), gdk.CONTROL_MASK, self.do_tag_check, True],
-			[('l',), gdk.CONTROL_MASK, self.do_tag_deadline, True],
+			[('d',), 0, self.do_tag_done, True],
+			[('t',), 0, self.do_tag_todo, True],
+			[('c',), 0, self.do_tag_check, True],
+			[('l',), 0, self.do_tag_deadline, True],
 			[('Escape',), 0, self.do_escape_mode, True],
 			[('Tab', 'ISO_Left_Tab', 'KP_Tab'), 0, self.do_indent_add, False],
 			[('Tab', 'ISO_Left_Tab', 'KP_Tab'), gdk.SHIFT_MASK, self.do_indent_remove, False],
 			[('KP_Enter', 'ISO_Enter', 'Return'), 0, self.do_auto_indent, False],
-			[('KP_Enter', 'ISO_Enter', 'Return'), gdk.CONTROL_MASK, self.do_auto_indent, False]
+			[('KP_Enter', 'ISO_Enter', 'Return'), gdk.CONTROL_MASK, self.do_auto_indent, False],
+			[('p',), 0, self.do_export_pdf, True],
+			[('h',), 0, self.do_export_html, True],
 		]
 		
 		for handler in self._event_handlers:
@@ -348,6 +354,30 @@ class DocumentHelper(Signals):
 	def do_auto_indent(self, event):
 		return self.auto_indent(event)
 	
+	def do_export(self, exporter):
+		doc = self._view.get_buffer()
+		
+		if doc.is_local():
+			filename = doc.get_uri().replace('file://', '')
+			data = file(filename, 'r').read()
+		else:
+			filename = '/tmp/' + os.path.basename(doc.get_uri())
+			data = doc.get_text(*doc.get_bounds())
+
+		ex = exporter(data, filename)
+		
+		if ex.export():
+			ex.show()
+		
+		self.exit_mode()
+		return True
+				
+	def do_export_pdf(self, event):
+		return self.do_export(ExportLatex)
+	
+	def do_export_html(self, event):
+		return self.do_export(ExportHtml)
+	
 	def on_key_press_event(self, doc, event):
 		defmod = gtk.accelerator_get_default_mod_mask() & event.state
 		
@@ -480,7 +510,7 @@ class DocumentHelper(Signals):
 				
 		self._buffer.unblock_insert_text(self.on_insert_text)
 
-	def on_document_load(self, doc, uri, linepos, create):
+	def on_document_load(self, doc, uri, encoding, linepos, create):
 		self._buffer.block_insert_text(self.on_insert_text)
 	
 	def on_document_loaded(self, doc, arg1):
