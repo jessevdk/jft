@@ -45,6 +45,7 @@
     <style id="meta-label"              _name="Meta label"/>
     <style id="latex-math"              _name="Latex math"/>
     <style id="author"                  _name="Author"/>
+    <style id="text"                    _name="Text"/>
   </styles>
 
   <definitions>
@@ -96,36 +97,47 @@
         <context ref="embedded-stuff"/>
       </include>
     </context>
-    <context id="tag-done" end-at-line-end="true" style-inside="true" style-ref="tag-done-value">
+    <context id="emptyspace" style-ref="text" extend-parent="false">
+      <match>(^\s+|\s+$)</match>
+    </context>
+    <context id="tag-done" style-inside="true" style-ref="tag-done-value">
       <start>(DONE):\s*(\((\%{datetime})\))?\s*</start>
+      <end>(^\s*\*)|(^\s*$)</end>
 		  <include>
       	<context sub-pattern="1" style-ref="tag-done" where="start"/>
       	<context sub-pattern="3" style-ref="datetime" where="start"/>
       	<context ref="embedded-stuff"/>
+      	<context ref="emptyspace"/>
       </include>
     </context>
-    <context id="tag-todo" end-at-line-end="true" style-inside="true" style-ref="tag-todo-value">
+    <context id="tag-todo" style-inside="true" style-ref="tag-todo-value">
       <start>(TODO):\s*(\((\%{datetime})\))?\s*</start>
+      <end>(^\s*\*)|(^\s*$)</end>
 		  <include>
       	<context sub-pattern="1" style-ref="tag-todo" where="start"/>
       	<context sub-pattern="3" style-ref="datetime" where="start"/>
       	<context ref="embedded-stuff"/>
+      	<context ref="emptyspace"/>
       </include>
     </context>
-    <context id="tag-check" end-at-line-end="true" style-inside="true" style-ref="tag-check-value">
+    <context id="tag-check" style-inside="true" style-ref="tag-check-value">
       <start>(CHECK):\s*(\((\%{datetime})\))?\s*</start>
+      <end>(^\s*\*)|(^\s*$)</end>
 		  <include>
       	<context sub-pattern="1" style-ref="tag-check" where="start"/>
       	<context sub-pattern="3" style-ref="datetime" where="start"/>
       	<context ref="embedded-stuff"/>
+      	<context ref="emptyspace"/>
       </include>
     </context>
-    <context id="tag-deadline" end-at-line-end="true" style-inside="true" style-ref="tag-deadline-value">
+    <context id="tag-deadline" style-inside="true" style-ref="tag-deadline-value">
       <start>(DEADLINE):\s*(\((\%{datetime})\))?\s*</start>
+      <end>(^\s*\*)|(^\s*$)</end>
 		  <include>
       	<context sub-pattern="1" style-ref="tag-deadline" where="start"/>
       	<context sub-pattern="3" style-ref="datetime" where="start"/>
       	<context ref="embedded-stuff"/>
+      	<context ref="emptyspace"/>
       </include>
     </context>
 	  <context id="tags">

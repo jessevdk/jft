@@ -72,6 +72,7 @@
 <!--
         Language specific styles 
 -->
+  <style name="jft:text" foreground="white" background="carbon" strikethrough="false"/>
   <style name="jft:header" foreground="yellow" italic="true"/>
   <style name="jft:tag-done" foreground="green" bold="true"/>
   <style name="jft:tag-done-value" foreground="lime" strikethrough="true"/>
