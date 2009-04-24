@@ -141,7 +141,7 @@ class ValidatorMeta(ValidatorHide):
 	def __init__(self, view):
 		ValidatorHide.__init__(self, 
 							   view,
-							   '##\s*([^#]*)\s*:\s*([^:]*[^\s][^:]*?)\s*##', 
+							   '\{\{\s*([^#]*)\s*:\s*([^:]*[^\s][^:]*?)\s*\}\}', 
 							   (2,))
 
 class ValidatorLatex(ValidatorHide):
