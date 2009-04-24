@@ -46,7 +46,7 @@ class Validation(Signals):
 			else:
 				return cm
 
-	class SortedMark:
+	class SortedMark(object):
 		def __init__(self, line, validator, bounds):
 			self.line = line
 			self.validator = validator
@@ -54,6 +54,8 @@ class Validation(Signals):
 			
 			self.bounds.start.set_data(Constants.VALIDATOR_KEY, validator)
 			self.bounds.end.set_data(Constants.VALIDATOR_KEY, validator)
+			
+			self.compare_direct = False
 		
 		def valid(self):
 			return self.validator.match_exact(self.bounds.get_text())
@@ -66,7 +68,10 @@ class Validation(Signals):
 		
 		def __cmp__(self, other):
 			if isinstance(other, Validation.SortedMark):
-				return cmp(self.line, other.line)
+				if self.compare_direct or other.compare_direct:
+					return cmp(super(object, self), other)
+				else:
+					return cmp(self.line, other.line)
 			else:
 				return cmp(self.line, other)
 		
@@ -100,8 +105,8 @@ class Validation(Signals):
 			if a in self._active_items:
 				self._active_items.remove(a)
 				
-			a.stop()
 			self._sorted_marks.remove(a)
+			a.stop()
 	
 	def stop(self):
 		if self._invalid_idle_id != 0:
@@ -190,11 +195,13 @@ class Validation(Signals):
 			# See if still matches
 			for a in active:
 				if not a.valid():
+					a.compare_direct = True
+
 					if a in self._active_items:
 						self._active_items.remove(a)
 
-					a.stop()
 					self._sorted_marks.remove(a)
+					a.stop()
 		
 		# And then try to validate some stuff
 		for validator in self._validators:
@@ -258,18 +265,23 @@ class Validation(Signals):
 		
 		for item in list(self._active_items):
 			start, end = item.bounds.start_iter(), item.bounds.end_iter()
-			
+
 			if not piter.in_range(start, end):
+				item.compare_direct = True
 				self._active_items.remove(item)
+				item.compare_direct = False
+
 				item.validator.exit(item.bounds)
+				piter = self._buffer.insert_iter()
 
 		for item in items:
 			start, end = item.bounds.start_iter(), item.bounds.end_iter()
-
+			
 			if piter.in_range(start, end) and \
 			   not (item in self._active_items):	
 				self._active_items.append(item)
 				item.validator.enter(item.bounds)
+				piter = self._buffer.insert_iter()
 
 		return False
 	
