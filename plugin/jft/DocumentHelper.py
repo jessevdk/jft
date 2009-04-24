@@ -393,24 +393,51 @@ class DocumentHelper(Signals):
 	def on_notify_buffer(self, view, spec):
 		self.reset_buffer(view.get_buffer())
 	
+	def _meta_line_length(self, line):
+		tabsize = self._view.get_tab_width()
+		l = len(line) + (tabsize - 1) * line.count("\t")
+		
+		r = re.compile('\{\{.*?:\s*(.*?)\s*\}\}')
+		
+		for item in r.finditer(line):
+			l -= len(item.group(0)) - len(item.group(1))
+	
+		return l
+
 	def _break_for_wrap(self, line, border):
 		tabsize = self._view.get_tab_width()
-		inmath = False
+		unbreakable = []
+		ubp = ('$}', '${')
+		last = None
+		
+		if self._meta_line_length(line) < border:
+			return None, None
 
 		for i in range(len(line) - 1, 1, -1):
 			first = line[0:i]
-			if line[i] == '$':
-				inmath = not inmath
+
+			if line[i] in ubp[1] and \
+			   unbreakable and \
+			   unbreakable[-1] == ubp[0][ubp[1].index(line[i])]:
+				unbreakable.pop()
+			elif line[i] in ubp[0]:
+				unbreakable.append(line[i])
 			
-			if not inmath and line[i].isspace() and (len(first) + first.count("\t") * (tabsize - 1)) < border:
-				second = line[i + 1:]
+			if not unbreakable and line[i].isspace():
+				if self._meta_line_length(first) < border:
+					second = line[i + 1:]
 				
-				if len(second) > border - 1:
-					return None, None
+					if self._meta_line_length(second) > border - 1:
+						break
 
-				return first, second
+					return first, second
+				else:
+					last = i
 
-		return None, None
+		if last != None:
+			return line[0:last], line[last + 1:]
+		else:
+			return None, None
 	
 	def _wrap_reuse_next(self, offset):
 		start = self._buffer.get_iter_at_line(offset + 1)
@@ -423,7 +450,7 @@ class DocumentHelper(Signals):
 		
 		line = start.get_text(end)
 		
-		return not (self._re_list.match(line) or line.strip() == "")
+		return not (self._re_list.match(line) or line.strip() == "" or line.strip().startswith('%') or line.strip().startswith('#'))
 	
 	def on_insert_text(self, start, end):
 		self._buffer.block_insert_text(self.on_insert_text)
@@ -444,68 +471,66 @@ class DocumentHelper(Signals):
 			
 			tabs = line.count("\t")
 
-			# Line extends margin?
-			if len(line) + tabs * (tabsize - 1) > border - 1:
-				# Do the wrapping magic
-				orig, wrapped = self._break_for_wrap(line, border)
-				
-				if wrapped:
-					start = self._buffer.get_iter_at_line(sl)
-					start.forward_chars(len(orig))
-					end = start.copy()
-					end.forward_to_line_end()
-
-					ins = self._buffer.get_iter_at_mark(self._buffer.get_insert())
-					movecursor = ins.in_range(start, end) or ins.equal(end)
-					moveinit = end.get_line_offset() - ins.get_line_offset()
-					
-					self._buffer.delete(start, end)
-				
-					if self._wrap_reuse_next(sl):
-						# Prepend wrapped text to next line
-						
-						start = self._buffer.get_iter_at_line(sl + 1)
-						self._buffer.iter_skip_space(start)
-						self._buffer.insert(start, wrapped)
-					
-						if not wrapped[-1].isspace():
-							self._buffer.insert(start, " ")
-							start.backward_char()
-						
-						start.backward_chars(moveinit)
-
-						if movecursor:
-							self._buffer.move_mark(self._buffer.get_insert(), start)
-							self._buffer.move_mark(self._buffer.get_selection_bound(), start)
-						
-						if el == sl:
-							el += 1
-					else:
-						# Create a new line, but calculate the indentation
-						match = self._re_list.match(line)
-						
-						if match:
-							idn, num = self.guess_indent(match.group(1))
-							num = len(match.group(2))
-							
-							indent = "%s%s%s" % (idn * num, ' ' * num, match.group(3))
-						else:
-							start = self._buffer.get_iter_at_line(sl)
-							begin = start.copy()
-							self._buffer.iter_skip_space(start)
-							
-							indent = begin.get_text(start)
-						
-						self._buffer.insert(end, "\n%s%s" % (indent, wrapped))
-						
-						end.backward_chars(moveinit)
-
-						if movecursor:
-							self._buffer.move_mark(self._buffer.get_insert(), end)
-							self._buffer.move_mark(self._buffer.get_selection_bound(), end)
-				
-						el += 1
+			# Do the wrapping magic
+			orig, wrapped = self._break_for_wrap(line, border)
 			
+			if wrapped:
+				start = self._buffer.get_iter_at_line(sl)
+				start.forward_chars(len(orig))
+				end = start.copy()
+				end.forward_to_line_end()
+
+				ins = self._buffer.get_iter_at_mark(self._buffer.get_insert())
+				movecursor = ins.in_range(start, end) or ins.equal(end)
+				moveinit = end.get_line_offset() - ins.get_line_offset()
+				
+				self._buffer.delete(start, end)
+			
+				if self._wrap_reuse_next(sl):
+					# Prepend wrapped text to next line
+					
+					start = self._buffer.get_iter_at_line(sl + 1)
+					self._buffer.iter_skip_space(start)
+					self._buffer.insert(start, wrapped)
+				
+					if not wrapped[-1].isspace():
+						self._buffer.insert(start, " ")
+						start.backward_char()
+					
+					start.backward_chars(moveinit)
+
+					if movecursor:
+						self._buffer.move_mark(self._buffer.get_insert(), start)
+						self._buffer.move_mark(self._buffer.get_selection_bound(), start)
+					
+					if el == sl:
+						el += 1
+				else:
+					# Create a new line, but calculate the indentation
+					match = self._re_list.match(line)
+					
+					if match:
+						idn, num = self.guess_indent(match.group(1))
+						num = len(match.group(2))
+						
+						indent = "%s%s%s" % (idn * num, ' ' * num, match.group(3))
+					else:
+						start = self._buffer.get_iter_at_line(sl)
+						begin = start.copy()
+						self._buffer.iter_skip_space(start)
+						
+						indent = begin.get_text(start)
+					
+					self._buffer.insert(end, "\n%s%s" % (indent, wrapped))
+					
+					end.backward_chars(moveinit)
+
+					if movecursor:
+						self._buffer.move_mark(self._buffer.get_insert(), end)
+						self._buffer.move_mark(self._buffer.get_selection_bound(), end)
+			
+					el += 1
+		
 			sl += 1
 				
 		self._buffer.unblock_insert_text(self.on_insert_text)
