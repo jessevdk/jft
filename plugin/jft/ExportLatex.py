@@ -2,7 +2,8 @@ import re
 import os
 
 class Parser:
-	def __init__(self):
+	def __init__(self, exporter):
+		self._exporter = exporter
 		self.inline = False
 	
 	def parse(self, line, continuation):
@@ -15,8 +16,8 @@ class Parser:
 		return False
 
 class ParserComment(Parser):
-	def __init__(self):
-		Parser.__init__(self)
+	def __init__(self, exporter):
+		Parser.__init__(self, exporter)
 		
 		self._re = re.compile('^(\s*)#(.*)')
 
@@ -29,8 +30,8 @@ class ParserComment(Parser):
 			return False
 
 class ParserMath(Parser):
-	def __init__(self):
-		Parser.__init__(self)
+	def __init__(self, exporter):
+		Parser.__init__(self, exporter)
 		
 		self._re = re.compile('^\s*[$]([^$]*)[$]\s*$')
 	
@@ -43,8 +44,8 @@ class ParserMath(Parser):
 		return "\\begin{displaymath}\n%s\n\\end{displaymath}" % (match.group(1),)
 	
 class ParserList(Parser):
-	def __init__(self):
-		Parser.__init__(self)
+	def __init__(self, exporter):
+		Parser.__init__(self, exporter)
 		
 		self._re = re.compile('^\s*(\*+)\s*(.*)')
 		self._re_indent = re.compile('^\s*')
@@ -97,10 +98,11 @@ class ParserList(Parser):
 		return self._pop_level(0)
 
 class ParserHeader(Parser):
-	def __init__(self):
-		Parser.__init__(self)
+	def __init__(self, exporter):
+		Parser.__init__(self, exporter)
 
 		self._re = re.compile('^\s*(%+)\s*(.*)$')
+		self._re_title = re.compile('^\s*{{\s*title\s*:\s*(.*?)}}\s*$')
 		self._level = 0
 		self._output = ''
 	
@@ -111,6 +113,11 @@ class ParserHeader(Parser):
 			return False
 		
 		level = len(match.group(1))
+		title = self._re_title.match(match.group(2))
+		
+		if level == 1 and title:
+			self._exporter.set_title(title.group(1))
+			return True
 		
 		if continuation and level != self._level:
 			out = self.end()
@@ -131,6 +138,9 @@ class ParserHeader(Parser):
 			return 'section'
 	
 	def end(self, line):
+		if self._level <= 0:
+			return True
+
 		out = '\%s{%s}' % (self.level_to_name(), self._output)
 		self._output = ""
 		
@@ -168,6 +178,12 @@ class ExportLatex:
 	def filename_pdf(self):
 		return self.filename_ext('pdf')
 	
+	def set_title(self, title):
+		if title:
+			self._title = str(title)
+		else:
+			self._title = ''
+	
 	def _inline_emphasize(self, match):
 		return '\\textit{%s}' % (match.group(1),)
 
@@ -199,7 +215,7 @@ class ExportLatex:
 				break
 			
 			ret += self._parse_inline_real(line[:match.start(0)]) + match.group(0)
-			line = line[match.end(0) + 1:]
+			line = line[match.end(0):]
 
 		ret += self._parse_inline_real(line)
 		return ret
@@ -212,7 +228,14 @@ class ExportLatex:
 	
 	def export(self):
 		self._output = []
-		parsers = [ParserComment(), ParserMath(), ParserList(), ParserHeader(), Parser()]
+		self._title = ''
+
+		parsers = [
+			ParserComment(self), 
+			ParserMath(self), 
+			ParserList(self), 
+			ParserHeader(self), 
+			Parser(self)]
 		last_parser = []
 
 		for line in self._data.split("\n"):
@@ -241,7 +264,11 @@ class ExportLatex:
 			self.append(parser.last())
 
 		content = "\n".join(self._output)		
-		header = "\\documentclass{article}\n\\usepackage{amsmath}\n\\usepackage{fullpage}\n\n\\begin{document}\n"
+		header = "\\documentclass{article}\n\\usepackage{amsmath}\n\\usepackage{fullpage}\n\\title{%s}\n\n\\begin{document}\n" % (self._title,)
+		
+		if self._title and self._title != '':
+			header += "\n\\maketitle\n\n"
+		
 		footer = "\\end{document}"
 		
 		file(self.filename_tex(), 'w').write(header + content + footer)
