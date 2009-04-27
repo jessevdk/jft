@@ -1,5 +1,8 @@
+# -*- coding: utf-8-*-
+
 import re
 import os
+import glob
 
 class Parser:
 	def __init__(self, exporter):
@@ -154,11 +157,12 @@ class ExportLatex:
 		self._re_ext = re.compile('^(.*)\\.[^/.]*$')
 		self._re_math = re.compile('[$][^$]*[$]')
 		
-		self._inline_parsers = {
-			re.compile('\'([^\']+)\''): self._inline_emphasize,
-			re.compile('_([a-z0-9- ]+)_'): self._inline_strong,
-			re.compile('([^\s].*)#'): self._inline_comment,
-		}
+		self._inline_parsers = [
+			[re.compile('\{\{cite\((.*?)\):.*?\}\}'), self._inline_cite],
+			[re.compile('([^\s].*)#'), self._inline_comment],
+			[re.compile('\'([^\']+)\''), self._inline_emphasize, False],
+			[re.compile('(?:[^\\]|^)_([a-z0-9- ]+)_'), self._inline_strong, False],
+		]
 	
 	def filename_ext(self, ext = None):
 		# Generate filename
@@ -193,17 +197,21 @@ class ExportLatex:
 	def _inline_comment(self, match):
 		return '%%%s' % (match.group(1),)
 	
+	def _inline_cite(self, match):
+		self._citations = True
+		return "\\cite{%s}" % (match.group(1).replace('_', u"¬"),)
+	
 	def _parse_inline_real(self, part):
-		for parser in self._inline_parsers:
+		for item in self._inline_parsers:			
 			while True:
-				match = parser.search(part)
+				match = item[0].search(part)
 				
 				if not match:
 					break
 
-				part = part[:match.start(0)] + self._inline_parsers[parser](match) + part[match.end(0):]
+				part = part[:match.start(0)] + item[1](match) + part[match.end(0):]
 		
-		return part.replace('_', '\_')
+		return part.replace('_', '\\_').replace(u"¬", '_')
 	
 	def _parse_inline(self, line):
 		ret = ''
@@ -221,7 +229,7 @@ class ExportLatex:
 		return ret
 	
 	def append(self, line):
-		if isinstance(line, str):
+		if isinstance(line, str) or isinstance(line, unicode):
 			self._output.append(line)
 		elif isinstance(line, list):
 			self._output.extend(line)
@@ -229,6 +237,7 @@ class ExportLatex:
 	def export(self):
 		self._output = []
 		self._title = ''
+		self._citations = False
 
 		parsers = [
 			ParserComment(self), 
@@ -264,14 +273,29 @@ class ExportLatex:
 			self.append(parser.last())
 
 		content = "\n".join(self._output)		
-		header = "\\documentclass{article}\n\\usepackage{amsmath}\n\\usepackage{fullpage}\n\\title{%s}\n\n\\begin{document}\n" % (self._title,)
+		header = "\\title{%s}\n\n\\begin{document}\n" % (self._title,)
+		packages = "\\documentclass{article}\n\\usepackage{amsmath}\n\\usepackage{fullpage}\n"
 		
 		if self._title and self._title != '':
 			header += "\n\\maketitle\n\n"
 		
+		if self._citations:
+			# Find references
+			packages += "\\usepackage{apacite}\n"
+
+			dname = os.path.dirname(self._filename)
+			refiles = glob.glob(dname + "/*.bib")
+			
+			if refiles:
+				content += "\n\\bibliographystyle{apacite}"
+		
+			for f in refiles:
+				content += "\n\\bibliography{%s}\n" % (os.path.basename(f).replace('.bib', ''),)
+		
+
 		footer = "\\end{document}"
 		
-		file(self.filename_tex(), 'w').write(header + content + footer)
+		file(self.filename_tex(), 'w').write(packages + header + content + footer)
 		return True
 
 	def show(self):
