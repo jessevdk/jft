@@ -401,6 +401,15 @@ class DocumentHelper(Signals):
 		
 		for item in r.finditer(line):
 			l -= len(item.group(0)) - len(item.group(1))
+		
+		r = re.compile('\$.*?\$')
+		r2 = re.compile('\\\\[a-z]+')
+
+		for item in r.finditer(line):
+			l -= 2
+			
+			for i2 in r2.finditer(item.group(0)):
+				l -= len(i2.group(0)) - 1
 	
 		return l
 
