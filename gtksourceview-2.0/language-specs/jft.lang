@@ -102,64 +102,64 @@
     <context id="tag-done" style-inside="true" style-ref="tag-done-value">
       <start>(DONE):\s*(\((\%{datetime})\))?\s*</start>
       <end>(^\s*\*)|(^\s*$)</end>
-		  <include>
-      	<context sub-pattern="1" style-ref="tag-done" where="start"/>
-      	<context sub-pattern="3" style-ref="datetime" where="start"/>
-      	<context ref="embedded-stuff"/>
-      	<context ref="emptyspace"/>
+      <include>
+        <context sub-pattern="1" style-ref="tag-done" where="start"/>
+        <context sub-pattern="3" style-ref="datetime" where="start"/>
+        <context ref="embedded-stuff"/>
+        <context ref="emptyspace"/>
       </include>
     </context>
     <context id="tag-todo" style-inside="true" style-ref="tag-todo-value">
       <start>(TODO):\s*(\((\%{datetime})\))?\s*</start>
       <end>(^\s*\*)|(^\s*$)</end>
-		  <include>
-      	<context sub-pattern="1" style-ref="tag-todo" where="start"/>
-      	<context sub-pattern="3" style-ref="datetime" where="start"/>
-      	<context ref="embedded-stuff"/>
-      	<context ref="emptyspace"/>
+      <include>
+        <context sub-pattern="1" style-ref="tag-todo" where="start"/>
+        <context sub-pattern="3" style-ref="datetime" where="start"/>
+        <context ref="embedded-stuff"/>
+        <context ref="emptyspace"/>
       </include>
     </context>
     <context id="tag-check" style-inside="true" style-ref="tag-check-value">
       <start>(CHECK):\s*(\((\%{datetime})\))?\s*</start>
       <end>(^\s*\*)|(^\s*$)</end>
-		  <include>
-      	<context sub-pattern="1" style-ref="tag-check" where="start"/>
-      	<context sub-pattern="3" style-ref="datetime" where="start"/>
-      	<context ref="embedded-stuff"/>
-      	<context ref="emptyspace"/>
+      <include>
+        <context sub-pattern="1" style-ref="tag-check" where="start"/>
+        <context sub-pattern="3" style-ref="datetime" where="start"/>
+        <context ref="embedded-stuff"/>
+        <context ref="emptyspace"/>
       </include>
     </context>
     <context id="tag-deadline" style-inside="true" style-ref="tag-deadline-value">
       <start>(DEADLINE):\s*(\((\%{datetime})\))?\s*</start>
       <end>(^\s*\*)|(^\s*$)</end>
-		  <include>
-      	<context sub-pattern="1" style-ref="tag-deadline" where="start"/>
-      	<context sub-pattern="3" style-ref="datetime" where="start"/>
-      	<context ref="embedded-stuff"/>
-      	<context ref="emptyspace"/>
+      <include>
+        <context sub-pattern="1" style-ref="tag-deadline" where="start"/>
+        <context sub-pattern="3" style-ref="datetime" where="start"/>
+        <context ref="embedded-stuff"/>
+        <context ref="emptyspace"/>
       </include>
     </context>
-	  <context id="tags">
-		  <include>
-      	<context ref="tag-done"/>
-      	<context ref="tag-todo"/>
-      	<context ref="tag-check"/>
-      	<context ref="tag-deadline"/>
+    <context id="tags">
+      <include>
+        <context ref="tag-done"/>
+        <context ref="tag-todo"/>
+        <context ref="tag-check"/>
+        <context ref="tag-deadline"/>
       </include>
-	  </context>
-	  <context id="latex-math" style-ref="latex-math">
-	    <start>\$</start>
-	    <end>\$</end>
-	  </context>
-	  <context id="datetime" style-ref="datetime">
-	    <match>\%{datetime}</match>
-	  </context>
-	  <context id="embedded-stuff">
-	    <include>
+    </context>
+    <context id="latex-math" style-ref="latex-math">
+      <start>\$</start>
+      <end>\$</end>
+    </context>
+    <context id="datetime" style-ref="datetime">
+      <match>\%{datetime}</match>
+    </context>
+    <context id="embedded-stuff">
+      <include>
         <context ref="datetime"/>
         <context ref="latex-math"/>
-	    </include>
-	  </context>
+      </include>
+    </context>
     <context id="jft">
       <include>
         <context ref="embedded-stuff"/>

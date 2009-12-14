@@ -211,7 +211,18 @@ class ExportLatex:
 
 				part = part[:match.start(0)] + item[1](match) + part[match.end(0):]
 		
-		return part.replace('_', '\\_').replace(u"¬", '_')
+		replacements = {
+			'_': '\\_',
+			'<=': '$\leq$',
+			'>=': '$\geq$',
+			'<': '$<$',
+			'>': '$>$'
+		}
+		
+		for k in replacements:
+			part = part.replace(k, replacements[k])
+
+		return part
 	
 	def _parse_inline(self, line):
 		ret = ''
@@ -226,7 +237,7 @@ class ExportLatex:
 			line = line[match.end(0):]
 
 		ret += self._parse_inline_real(line)
-		return ret
+		return ret.replace(u"¬", '_')
 	
 	def append(self, line):
 		if isinstance(line, str) or isinstance(line, unicode):
@@ -274,7 +285,7 @@ class ExportLatex:
 
 		content = "\n".join(self._output)		
 		header = "\\title{%s}\n\n\\begin{document}\n" % (self._title,)
-		packages = "\\documentclass{article}\n\\usepackage{amsmath}\n\\usepackage{fullpage}\n"
+		packages = "\\documentclass{article}\n\\usepackage{amsmath}\n\\usepackage{fullpage}\n\\usepackage{graphicx}\n"
 		
 		if self._title and self._title != '':
 			header += "\n\\maketitle\n\n"

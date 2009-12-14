@@ -6,6 +6,7 @@ import glib
 import re
 import time
 import os
+import gio
 
 from Signals import Signals
 from BufferUtils import BufferUtils
@@ -357,11 +358,13 @@ class DocumentHelper(Signals):
 	def do_export(self, exporter):
 		doc = self._view.get_buffer()
 		
+		ff = gio.File(doc.get_uri())
+		
 		if doc.is_local():
-			filename = doc.get_uri().replace('file://', '')
+			filename = ff.get_path()
 			data = file(filename, 'r').read()
 		else:
-			filename = '/tmp/' + os.path.basename(doc.get_uri())
+			filename = '/tmp/' + ff.get_basename()
 			data = doc.get_text(*doc.get_bounds())
 
 		ex = exporter(data, filename)
