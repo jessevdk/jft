@@ -1,7 +1,7 @@
 [Gedit Plugin]
 Loader=python
 Module=jft
-IAge=2
+IAge=3
 Name=JFT functions
 Description=JFT functions
 Authors=Jesse van den Kieboom <jesse@icecrew.nl>

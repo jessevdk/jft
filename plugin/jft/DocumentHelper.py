@@ -358,7 +358,7 @@ class DocumentHelper(Signals):
 	def do_export(self, exporter):
 		doc = self._view.get_buffer()
 		
-		ff = gio.File(doc.get_uri())
+		ff = doc.get_location()
 		
 		if doc.is_local():
 			filename = ff.get_path()
