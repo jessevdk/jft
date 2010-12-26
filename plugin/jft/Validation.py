@@ -296,8 +296,8 @@ class Validation(Signals):
 		for item in self._sorted_marks:
 			item.validator.restore_after_save(item.bounds)
 	
-	def on_save(self, doc, uri, encoding, newline_type, flags):
+	def on_save(self, *args):
 		self._store_for_save()
 	
-	def on_saved(self, doc, arg1):
+	def on_saved(self, *args):
 		self._restore_after_save()
