@@ -105,14 +105,15 @@ class BufferUtils:
 				end = self.get_iter_at_mark(other)
 
 				handler(start, end)
-				
+
 				if self._insert_text_start.get_deleted() or other.get_deleted():
 					break
-		
+
 		if not self._insert_text_start.get_deleted():
 			self.delete_mark(self._insert_text_start)
-		
+
 		if not other.get_deleted():
+			location.assign(self.get_iter_at_mark(other))
 			self.delete_mark(other)
-		
+
 		self.end_user_action()
