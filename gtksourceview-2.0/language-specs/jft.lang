@@ -42,6 +42,8 @@
     <style id="meta-boundary"           _name="Meta boundary"/>
     <style id="meta-contents"           _name="Meta contents"/>
     <style id="meta-label"              _name="Meta label"/>
+    <style id="meta-emphasize"              _name="Meta emphasize"/>
+    <style id="meta-strong"              _name="Meta strong"/>
     <style id="latex-math"              _name="Latex math"/>
     <style id="author"                  _name="Author"/>
     <style id="text"                    _name="Text"/>
@@ -82,8 +84,24 @@
         <context sub-pattern="0" where="end" style-ref="meta-boundary"/>
       </include>
     </context>
+    <context id="strong">
+      <match>(__)([^_]+)(__)</match>
+      <include>
+        <context sub-pattern="1" style-ref="meta-boundary"/>
+        <context sub-pattern="2" style-ref="meta-strong"/>
+        <context sub-pattern="3" style-ref="meta-boundary"/>
+      </include>
+    </context>
+    <context id="emphasize">
+      <match>(''')([^']+)(''')</match>
+      <include>
+        <context sub-pattern="1" style-ref="meta-boundary"/>
+        <context sub-pattern="2" style-ref="meta-emphasize"/>
+        <context sub-pattern="3" style-ref="meta-boundary"/>
+      </include>
+    </context>
     <context id="comment" style-ref="comment">
-      <start>#</start>
+      <start>^#</start>
       <end>$</end>
       <include>
         <context ref="def:in-comment"/>
@@ -164,6 +182,8 @@
       <include>
         <context ref="embedded-stuff"/>
         <context ref="meta"/>
+        <context ref="strong"/>
+        <context ref="emphasize"/>
         <context ref="header"/>
         <context ref="comment"/>
 

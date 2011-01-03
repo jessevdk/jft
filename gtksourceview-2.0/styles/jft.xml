@@ -90,6 +90,8 @@
   <style name="jft:meta-boundary" foreground="ambra"/>
   <style name="jft:meta-contents" foreground="senape" italic="true"/>
   <style name="jft:meta-label" foreground="yellow" underline="true"/>
+  <style name="jft:meta-emphasize" foreground="yellow" italic="true"/>
+  <style name="jft:meta-strong" foreground="yellow" bold="true"/>
 
   <style name="jft:latex-math" foreground="cyan"/>
 </style-scheme>
