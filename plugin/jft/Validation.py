@@ -5,6 +5,8 @@ from BufferUtils import BufferUtils
 from Signals import Signals
 from Validators import ValidatorMeta
 from Validators import ValidatorLatex
+from Validators import ValidatorEmphasize
+from Validators import ValidatorStrong
 import Constants
 
 class Validation(Signals):
@@ -121,7 +123,9 @@ class Validation(Signals):
 	def _initialize_validators(self):
 		self._validators = [
 			ValidatorMeta(self._view),
-			ValidatorLatex(self._view)
+			ValidatorLatex(self._view),
+			ValidatorEmphasize(self._view),
+			ValidatorStrong(self._view)
 		]
 	
 	def iter_with_offset(self, start, offset):
